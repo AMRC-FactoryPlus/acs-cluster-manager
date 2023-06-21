@@ -5,6 +5,7 @@
 # as-root parts of the setup.
 
 . ./sh/install-deps.sh
+. ./sh/setup-krb5.sh
 . ./sh/network.sh
 . ./sh/install-k3s.sh
 . ./sh/change-password.sh

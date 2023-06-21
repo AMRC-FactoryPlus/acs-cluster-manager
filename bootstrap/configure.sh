@@ -6,6 +6,15 @@
 # - Optional "which of these is your network north/south" question - skips if args passed
 # - This should be served from the central cluster and the args should be added as part of the central Helm chart
 
+if [ "$(id -u)" = 0 ]
+then
+    cat <<MSG
+DON'T run this script as root. Run as a normal user with sudo rights, and
+you will be prompted for a sudo password when necessary.
+MSG
+    exit 1
+fi
+
 set -ex
 export DEBIAN_FRONTEND=noninteractive
 
@@ -54,7 +63,7 @@ mkdir -p install
 )
 
 echo Running necessary steps as root via sudo...
-sudo /bin/sh ./sh/as-root.sh
+ACS_DOMAIN="$baseURL" REALM="$realm" sudo -E /bin/sh ./sh/as-root.sh
 
 echo "Setting KUBECONFIG for use by k8s tools..."
 export KUBECONFIG="$(realpath ./install/k3s.yaml)"
@@ -76,25 +85,6 @@ done
 rm kubeseal-0.22.0-linux-amd64.tar.gz
 rm ./kubeseal
 
-echo Configuring Kerberos...
-printf "[libdefaults]
-
-    default_realm = $realm
-    dns_canonicalize_hostname = false
-    udp_preference_limit = 1
-    spake_preauth_groups = edwards25519
-
-[domain_realm]
-    $baseURL = $realm
-
-[realms]
-
-    $realm = {
-        kdc = kdc.$baseURL
-        admin_server = kadmin.$baseURL
-        disable_encrypted_timestamp = true
-    }
-" >/etc/krb5.conf
 export KRB5CCNAME=$(mktemp)
 read -p "Please enter the username of a Factory+ administrator user: " KERBUSER
 kinit $KERBUSER

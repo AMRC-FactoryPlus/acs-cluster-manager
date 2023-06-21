@@ -13,10 +13,13 @@ export DEBIAN_FRONTEND=noninteractive
 #baseURL = ""
 #realm = ""
 
-while getopts u:r: flag; do
+scheme=https
+
+while getopts u:r:S flag; do
   case "${flag}" in
   u) baseURL=${OPTARG} ;;
   r) realm=${OPTARG} ;;
+  S) scheme=http ;;
   esac
 done
 
@@ -191,7 +194,7 @@ read -p "Please enter the username of a Factory+ administrator user: " KERBUSER
 kinit $KERBUSER
 
 echo Registering edge cluster...
-npm run start
+EDGE_URL="${scheme}://edge.${baseURL}" npm run start
 
 echo Configuring Flux...
 

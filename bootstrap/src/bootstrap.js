@@ -40,7 +40,7 @@ async function run () {
 
         // Register the cluster with the API
         console.log('Registering cluster with API...');
-        const edge = `${process.env.SCHEME}://edge.${process.env.BASE_URL}`;
+        const edge = process.env.EDGE_URL;
         console.log(`Contacting Edge Deployment at ${edge}`);
 
         // Make the request to the API to register the cluster
@@ -50,9 +50,11 @@ async function run () {
             sources: ['shared/flux-system']
         }, {
             headers: {
-                'Authorization': `Negotiate ${await getSingleUseToken()}`
+                'Authorization': `Negotiate ${await getSingleUseToken(edge)}`
             }
         });
+
+        console.log("Cluster create response: %o", e);
 
         // Set the UUID and flux URL
         process.uuid = e.data.uuid;
@@ -69,7 +71,7 @@ async function run () {
         // Poll the API to check if the cluster has been registered
         return poll(async () => instance.get(`${edge}/v1/cluster/${uuid}/status`, {
             headers: {
-                'Authorization': `Negotiate ${await getSingleUseToken()}`
+                'Authorization': `Negotiate ${await getSingleUseToken(edge)}`
             }
         }).then(validateResponse));
 
@@ -109,9 +111,10 @@ function sleep (ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-async function getSingleUseToken () {
-    const ctx = GSS.createClientContext({ server: `HTTP@edge.${process.env.BASE_URL}` });
-    const tok = await GSS.initSecContext();
+async function getSingleUseToken (url) {
+    const host = new URL(url).hostname;
+    const ctx = GSS.createClientContext({ server: `HTTP@${host}` });
+    const tok = await GSS.initSecContext(ctx);
     const tok64 = tok.toString('base64');
     console.log(`Got GSSAPI token: ${tok64}`);
     return tok64;

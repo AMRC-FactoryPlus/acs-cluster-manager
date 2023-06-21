@@ -2,7 +2,7 @@ require('dotenv-defaults').config();
 
 const axios     = require('axios').default;
 const os        = require('os');
-const fs        = require('fs');
+const fs        = require('fs/promises');
 const { Agent } = require('https');
 
 const GSS = require('gssapi.js');
@@ -10,72 +10,74 @@ const GSS = require('gssapi.js');
 run();
 
 async function run () {
+    const name = os.hostname();
+    console.log(`Naming this cluster ${name}`);
+
     // Read the kubeseal cert from the file
     console.log('Reading kubeseal cert from file...');
-    let kubesealCert = null;
-    fs.readFile(`${process.env.KUBESEAL_FILE}`, 'utf8', async (err, data) => {
-        // If there is an error reading the file, log it and exit
-        if (err) {
-            console.log('Error reading kubeseal cert from file');
-            console.error(err);
-            return;
-        }
-        // Otherwise, continue the bootstrap
-        kubesealCert = data;
+    const kubeseal_cert = await fs.readFile("install/kubesealCert.pem", 
+        { encoding: "utf-8" });
+    console.log('Kubeseal cert read successfully.', kubeseal_cert);
 
-        console.log('Kubeseal cert read successfully.', kubesealCert);
-
-        // Holds the UUID of the cluster returned by the API
-        let uuid = null;
-
-        // Holds the full URL to the cluster's Flux repo returned by the API
-        let flux = null;
-
-        // Create an Axios instance with the https agent set to reject unauthorized certificates if the scheme is https
-        const instance = axios.create({
-            httpsAgent: new Agent({
-                rejectUnauthorized: process.env.SCHEME === 'https'
-            })
-        });
-
-        // Register the cluster with the API
-        console.log('Registering cluster with API...');
-        const edge = process.env.EDGE_URL;
-        console.log(`Contacting Edge Deployment at ${edge}`);
-
-        // Make the request to the API to register the cluster
-        let e = await instance.post(`${edge}/v1/cluster`, {
-            name: os.hostname(),
-            kubeseal_cert: kubesealCert,
-            sources: ['shared/flux-system']
-        }, {
-            headers: {
-                'Authorization': `Negotiate ${await getSingleUseToken(edge)}`
-            }
-        });
-
-        console.log("Cluster create response: %o", e);
-
-        // Set the UUID and flux URL
-        uuid = e.data.uuid;
-        flux = e.data.flux;
-
-        if (!uuid) {
-            throw new Error('UUID not set');
-        }
-
-        if (!flux) {
-            throw new Error('flux not set');
-        }
-
-        // Poll the API to check if the cluster has been registered
-        return poll(async () => instance.get(`${edge}/v1/cluster/${uuid}/status`, {
-            headers: {
-                'Authorization': `Negotiate ${await getSingleUseToken(edge)}`
-            }
-        }).then(validateResponse));
-
+    // Create an Axios instance with the https agent set to reject unauthorized certificates if the scheme is https
+    const instance = axios.create({
+        httpsAgent: new Agent({
+            rejectUnauthorized: process.env.SCHEME === 'https'
+        })
     });
+
+    // Register the cluster with the API
+    const edge = process.env.EDGE_URL;
+    console.log(`Contacting Edge Deployment at ${edge}`);
+
+    // Make the request to the API to register the cluster
+    console.log('Registering cluster with API...');
+    let e = await instance.post(`${edge}/v1/cluster`, {
+        name, kubeseal_cert,
+        sources: ['shared/flux-system'],
+    }, {
+        headers: {
+            'Authorization': `Negotiate ${await getSingleUseToken(edge)}`
+        }
+    });
+
+    // Set the UUID and flux URL
+    const uuid = e.data.uuid;
+    const flux = e.data.flux;
+
+    if (!uuid) {
+        throw new Error('UUID not set');
+    }
+
+    if (!flux) {
+        throw new Error('flux not set');
+    }
+
+    // Poll the API to check if the cluster has been registered
+    await poll(async () => 
+        instance.get(`${edge}/v1/cluster/${uuid}/status`, {
+            headers: {
+                'Authorization': `Negotiate ${await getSingleUseToken(edge)}`
+            }
+        })
+        .then(validateResponse));
+    console.log("Cluster is set up and ready to deploy");
+
+    let git_tok_url = new URL("/token", flux).toString();
+    let git_res = await instance.post(git_tok_url, {}, {
+        headers: {
+            'Authorization': `Negotiate ${await getSingleUseToken(git_tok_url)}`,
+        },
+    });
+    if (git_res.status != 200)
+        throw `Can't fetch a temporary token for the git repo: ${git_res.status}`;
+    let git_tok = git_res.data.token;
+
+    await fs.writeFile("install/cluster-info.sh", `
+CLUSTER_NAME="${name}"
+FLUX_URL="${flux}"
+FLUX_TOKEN="${git_tok}"
+`);
 }
 
 /**
@@ -113,6 +115,7 @@ function sleep (ms) {
 
 async function getSingleUseToken (url) {
     const host = new URL(url).hostname;
+    console.log(`Getting GSSAPI creds for ${host}`);
     const ctx = GSS.createClientContext({ server: `HTTP@${host}` });
     const tok = await GSS.initSecContext(ctx);
     const tok64 = tok.toString('base64');

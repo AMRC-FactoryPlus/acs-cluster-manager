@@ -57,7 +57,8 @@ iptables -F
 iptables -A INPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
 # Allow SSH access on all interfaces
 iptables -A INPUT -p tcp --dport 22 -m conntrack --ctstate NEW,ESTABLISHED -j ACCEPT
-iptables -A OUTPUT -p tcp --sport 22 -m conntrack --ctstate ESTABLISHED -j ACCEPT
+# Allow K8s API access on all interfaces
+iptables -A INPUT -p tcp --dport 6443 -m conntrack --ctstate NEW,ESTABLISHED -j ACCEPT
 # Block all other incoming requests on the northbound interface
 iptables -A INPUT -i $ENN -j DROP
 # Save and persist

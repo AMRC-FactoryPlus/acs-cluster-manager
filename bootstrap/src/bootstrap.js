@@ -31,9 +31,6 @@ async function run () {
         // Holds the full URL to the cluster's Flux repo returned by the API
         let flux = null;
 
-        // Register the cluster with the API
-        console.log('Registering cluster with API...');
-
         // Create an Axios instance with the https agent set to reject unauthorized certificates if the scheme is https
         const instance = axios.create({
             httpsAgent: new Agent({
@@ -41,10 +38,13 @@ async function run () {
             })
         });
 
-        console.log('Getting single use token...');
+        // Register the cluster with the API
+        console.log('Registering cluster with API...');
+        const edge = `${process.env.SCHEME}://edge.${process.env.BASE_URL}`;
+        console.log(`Contacting Edge Deployment at ${edge}`);
 
         // Make the request to the API to register the cluster
-        let e = await instance.post(`${process.env.SCHEME}://edge.${process.env.BASE_URL}/v1/cluster`, {
+        let e = await instance.post(`${edge}/v1/cluster`, {
             name: os.hostname(),
             kubeseal_cert: kubesealCert,
             sources: ['shared/flux-system']
@@ -67,7 +67,7 @@ async function run () {
         }
 
         // Poll the API to check if the cluster has been registered
-        return poll(async () => instance.get(`${process.env.SCHEME}://edge.${process.env.BASE_URL}/v1/cluster/${uuid}/status`, {
+        return poll(async () => instance.get(`${edge}/v1/cluster/${uuid}/status`, {
             headers: {
                 'Authorization': `Negotiate ${await getSingleUseToken()}`
             }
@@ -110,5 +110,9 @@ function sleep (ms) {
 }
 
 async function getSingleUseToken () {
-    return (await GSS.initSecContext(GSS.createClientContext({ server: `HTTP@edge.${process.env.BASE_URL}` }))).toString('base64');
+    const ctx = GSS.createClientContext({ server: `HTTP@edge.${process.env.BASE_URL}` });
+    const tok = await GSS.initSecContext();
+    const tok64 = tok.toString('base64');
+    console.log(`Got GSSAPI token: ${tok64}`);
+    return tok64;
 }

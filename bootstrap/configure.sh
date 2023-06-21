@@ -6,7 +6,7 @@
 # - Optional "which of these is your network north/south" question - skips if args passed
 # - This should be served from the central cluster and the args should be added as part of the central Helm chart
 
-set -x
+set -ex
 export DEBIAN_FRONTEND=noninteractive
 
 # Add defaults here if required

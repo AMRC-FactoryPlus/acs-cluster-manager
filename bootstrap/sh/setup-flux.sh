@@ -14,6 +14,7 @@ echo Configuring Flux...
 
 name="cluster-${CLUSTER_NAME}"
 
+flux install
 flux create secret git temp-token --url="$FLUX_URL" --bearer-token="$FLUX_TOKEN"
 flux create source git "$name" --secret-ref=temp-token --url="$FLUX_URL"
 flux create kustomization "$name" --source="GitRepository/$name"

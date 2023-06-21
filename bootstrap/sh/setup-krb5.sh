@@ -22,7 +22,7 @@ cat <<KRB5CONF >/etc/krb5.conf
     $ACS_DOMAIN = $REALM
 
 [realms]
-    $ACS_DOMAIN = {
+    $REALM = {
         kdc = kdc.$ACS_DOMAIN
         admin_server = kadmin.$ACS_DOMAIN
         disable_encrypted_timestamp = true

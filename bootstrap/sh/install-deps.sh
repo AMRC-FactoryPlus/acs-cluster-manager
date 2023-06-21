@@ -1,7 +1,7 @@
 # ACS Cell Gateway bootstrap script
 # Install dependencies
 
-if [ "$(id -u)" != 0]
+if [ "$(id -u)" != 0 ]
 then
     echo "Software installation must run as root!" >&2
     exit 1

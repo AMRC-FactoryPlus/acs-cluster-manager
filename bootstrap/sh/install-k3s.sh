@@ -14,6 +14,12 @@ then
     exit 1
 fi
 
+if [ -f /usr/local/bin/k3s-uninstall.sh ]
+then
+    echo "Uninstalling previous k3s install..."
+    /usr/local/bin/k3s-uninstall.sh
+fi
+
 echo Installing K3s...
 sh ./install/k3s.sh --cluster-init --disable=traefik --node-ip=10.0.0.1
 

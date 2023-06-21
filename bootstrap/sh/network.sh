@@ -16,18 +16,21 @@ ENS1=$(ip -br l | awk '$1 ~ "enx" { print $1}' | sed -n 1p)
 # Southbound interface 2
 ENS2=$(ip -br l | awk '$1 ~ "enx" { print $1}' | sed -n 2p)
 
-[[ -z "$ENN" ]] && {
+if [ -z "$ENN" ]
+then
   echo "Northbound interface could not be found"
   exit 1
-}
-[[ -z "$ENS1" ]] && {
+fi
+if [ -z "$ENS1" ]
+then
   echo "First southbound interface could not be found"
   exit 1
-}
-[[ -z "$ENS2" ]] && {
+fi
+if [ -z "$ENS2" ]
+then
   echo "Second southbound interface could not be found"
   exit 1
-}
+fi
 
 # Serial number
 SERIAL=$(dmidecode -s system-serial-number | tr [:upper:] [:lower:])

@@ -63,6 +63,7 @@ async function run () {
         .then(validateResponse));
     console.log("Cluster is set up and ready to deploy");
 
+    console.log("Fetching temporary token for flux repo...")
     let git_tok_url = new URL("/token", flux).toString();
     let git_res = await instance.post(git_tok_url, {}, {
         headers: {

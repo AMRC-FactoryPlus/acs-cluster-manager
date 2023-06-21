@@ -99,7 +99,7 @@ function poll (fn) {
  */
 function validateResponse (res) {
     // If the response is not 200 or the ready flag is not true then fail
-    if (!res.data || res.data.content.status !== 200 || res.data.ready !== true) throw res;
+    if (!res.data || res.status !== 200 || res.data.ready !== true) throw res;
 }
 
 /**
@@ -116,6 +116,5 @@ async function getSingleUseToken (url) {
     const ctx = GSS.createClientContext({ server: `HTTP@${host}` });
     const tok = await GSS.initSecContext(ctx);
     const tok64 = tok.toString('base64');
-    console.log(`Got GSSAPI token: ${tok64}`);
     return tok64;
 }

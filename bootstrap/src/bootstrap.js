@@ -57,7 +57,7 @@ async function run () {
         console.log("Cluster create response: %o", e);
 
         // Set the UUID and flux URL
-        process.uuid = e.data.uuid;
+        uuid = e.data.uuid;
         flux = e.data.flux;
 
         if (!uuid) {

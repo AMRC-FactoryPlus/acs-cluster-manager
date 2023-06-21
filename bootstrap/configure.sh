@@ -39,120 +39,26 @@ if [ "$ioBox" = "n" ]; then
   exit 1
 fi
 
-read -p "Enter user: " user
 
-# Northbound interface
-ENN=$(ip -br l | awk '$1 ~ "enp" { print $1}' | sed -n 1p)
+echo Downloading installation scripts...
+rm -rf install
+mkdir -p install
+(
+    cd install
+    fetch="curl -sSL --fail-early"
+    $fetch https://apt.kitware.com/keys/kitware-archive-latest.asc >kitware.key
+    $fetch https://deb.nodesource.com/setup_20.x >node-apt.sh
+    $fetch https://get.k3s.io >k3s.sh
+    $fetch https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 >helm.sh
+    $fetch https://fluxcd.io/install.sh >flux.sh
+)
 
-# Southbound interface 1
-ENS1=$(ip -br l | awk '$1 ~ "enx" { print $1}' | sed -n 1p)
+echo Running necessary steps as root via sudo...
+sudo /bin/sh ./sh/as-root.sh
 
-# Southbound interface 2
-ENS2=$(ip -br l | awk '$1 ~ "enx" { print $1}' | sed -n 2p)
-
-[[ -z "$ENN" ]] && {
-  echo "Northbound interface could not be found"
-  exit 1
-}
-[[ -z "$ENS1" ]] && {
-  echo "First southbound interface could not be found"
-  exit 1
-}
-[[ -z "$ENS2" ]] && {
-  echo "Second southbound interface could not be found"
-  exit 1
-}
-
-# Serial number
-SERIAL=$(dmidecode -s system-serial-number | tr [:upper:] [:lower:])
-
-echo Installing Dependencies...
-# Wireguard, iptables, dnsmasq
-apt-get update && apt-get install wireguard g++ iptables-persistent dnsmasq krb5-user -y
-
-# Cmake
-apt-get install apt-transport-https ca-certificates gnupg software-properties-common wget
-wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | apt-key add -
-apt-add-repository 'deb https://apt.kitware.com/ubuntu/ jammy main' -y
-apt-get update
-apt-get install cmake libkrb5-dev -y
-
-# NodeJS
-curl -fsSL https://deb.nodesource.com/setup_20.x | -E bash - &&
-  apt-get install -y nodejs
-
-# Helm
-curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
-# Flux
-curl -s https://fluxcd.io/install.sh | bash
-
-echo Downloading the k3s.io script before we change the network...
-curl -sfL https://get.k3s.io -o installK3s.sh
-
-echo Setting hostname...
-hostnamectl set-hostname fpcgw-${SERIAL}
-echo $(hostname)
-
-echo Configuring network...
-echo Adapters found:
-echo ENN: $ENN
-echo ENS1: $ENS1
-echo ENS2: $ENS2
-
-echo Setting iptables...
-# Allow all incoming connections
-iptables -P INPUT ACCEPT
-# Allow all outgoing connections
-iptables -P OUTPUT ACCEPT
-# Block all forwarded connections
-iptables -P FORWARD DROP
-# Flush existing firewall rules
-iptables -F
-# Allow established and related inbound connections on all interfaces
-iptables -A INPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
-# Allow SSH access on all interfaces
-iptables -A INPUT -p tcp --dport 22 -m conntrack --ctstate NEW,ESTABLISHED -j ACCEPT
-iptables -A OUTPUT -p tcp --sport 22 -m conntrack --ctstate ESTABLISHED -j ACCEPT
-# Block all other incoming requests on the northbound interface
-iptables -A INPUT -i $ENN -j DROP
-# Save and persist
-netfilter-persistent save
-iptables-legacy-save
-
-echo Configuring dnsmasq on the 10.0.0.1 interface...
-echo -e $"interface=$ENS2\nbind-interfaces\nno-hosts\ndhcp-range=10.0.0.2,10.0.0.150,12h" >"/etc/dnsmasq.conf"
-systemctl restart dnsmasq
-
-echo Writing netplan config...
-rm /etc/netplan/00*
-printf "network:
-  version: 2
-  renderer: networkd
-  ethernets:
-    $ENN:
-      dhcp4: true
-      critical: true
-    $ENS1:
-      optional: true
-      addresses:
-        - 192.168.1.100/24
-    $ENS2:
-      ignore-carrier: true
-      addresses:
-        - 10.0.0.1/24
-" >/etc/netplan/99_config.yaml
-netplan apply
-
-echo Changing admin password...
-#PASSWORD=$(tr -dc A-Za-z0-9 </dev/urandom | head -c 13)
-#usermod -p $(openssl passwd -1 $PASSWORD) fplusadmin
-#echo "Password set to:$PASSWORD"
-
-echo Having a nap whilst the network comes back up...
-sleep 10
-
-echo Installing K3s...
-sh ./installK3s.sh --cluster-init --disable=traefik --node-ip=10.0.0.1 2>&1 && rm ./installK3s.sh
+echo "Setting KUBECONFIG for use by k8s tools..."
+export KUBECONFIG="$(realpath ./install/k3s.yaml)"
+exit 0
 
 echo Configuring Sealed Secrets...
 helm repo add sealed-secrets https://bitnami-labs.github.io/sealed-secrets

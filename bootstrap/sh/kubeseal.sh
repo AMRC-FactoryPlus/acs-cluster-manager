@@ -12,5 +12,6 @@ until [ -s ./install/kubesealCert.pem ]; do
 
   ./install/kubeseal --controller-name sealed-secrets \
     --controller-namespace default \
-    --fetch-cert >./install/kubesealCert.pem
+    --fetch-cert >./install/kubesealCert.pem \
+    || true
 done

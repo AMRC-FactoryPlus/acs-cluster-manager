@@ -7,11 +7,12 @@
 
 scheme=https
 
-while getopts u:r:S flag; do
+while getopts u:r:St: flag; do
   case "${flag}" in
   u) baseURL=${OPTARG} ;;
   r) realm=${OPTARG} ;;
   S) scheme=http ;;
+  t) template="${OPTARG}" ;;
   esac
 done
 
@@ -24,6 +25,11 @@ if [ -z "$realm" ]
 then
   realm="$(echo "$baseURL" | tr a-z A-Z)"
   echo "Realm not provided, defaulting to ${realm}"
+fi
+if [ -z "$template" ]
+then
+    echo "Cluster template not provided (-t)"
+    exit 1
 fi
 
 read -p "Does the gateway have an I/O box with two network ports on the front? (y/n)" ioBox

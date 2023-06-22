@@ -32,12 +32,15 @@ export KUBECONFIG="$(realpath ./install/k3s.yaml)"
 
 . ./sh/kubeseal.sh
 
+echo Installing Javascript dependencies...
+npm install
+
 export KRB5CCNAME=$(mktemp)
 read -p "Please enter the username of a Factory+ administrator user: " KERBUSER
 kinit $KERBUSER
 
 echo Registering edge cluster...
-EDGE_URL="${scheme}://edge.${baseURL}" npm run start
+node src/bootstrap.js "${scheme}://edge.${baseURL}" "$template"
 
 . ./install/cluster-info.sh
 . ./sh/setup-flux.sh

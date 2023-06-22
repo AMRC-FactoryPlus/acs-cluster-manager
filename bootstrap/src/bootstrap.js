@@ -7,9 +7,11 @@ const { Agent } = require('https');
 
 const GSS = require('gssapi.js');
 
-run();
+run(process.argv.slice(2));
 
-async function run () {
+async function run (argv) {
+    const [edge, template] = argv;
+
     const name = os.hostname();
     console.log(`Naming this cluster ${name}`);
 
@@ -19,22 +21,15 @@ async function run () {
         { encoding: "utf-8" });
     console.log('Kubeseal cert read successfully.', kubeseal_cert);
 
-    // Create an Axios instance with the https agent set to reject unauthorized certificates if the scheme is https
-    const instance = axios.create({
-        httpsAgent: new Agent({
-            rejectUnauthorized: process.env.SCHEME === 'https'
-        })
-    });
+    const instance = axios.create();
 
     // Register the cluster with the API
-    const edge = process.env.EDGE_URL;
     console.log(`Contacting Edge Deployment at ${edge}`);
 
     // Make the request to the API to register the cluster
     console.log('Registering cluster with API...');
     let e = await instance.post(`${edge}/v1/cluster`, {
-        name, kubeseal_cert,
-        sources: ['shared/flux-system'],
+        name, kubeseal_cert, template,
     }, {
         headers: {
             'Authorization': `Negotiate ${await getSingleUseToken(edge)}`
@@ -116,7 +111,6 @@ function sleep (ms) {
 
 async function getSingleUseToken (url) {
     const host = new URL(url).hostname;
-    console.log(`Getting GSSAPI creds for ${host}`);
     const ctx = GSS.createClientContext({ server: `HTTP@${host}` });
     const tok = await GSS.initSecContext(ctx);
     const tok64 = tok.toString('base64');

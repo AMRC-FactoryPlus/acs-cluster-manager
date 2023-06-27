@@ -1,11 +1,5 @@
 #!/bin/bash
 
-# Todo:
-# - Move REST calls to JS for now. One file output jq to extract vars
-# - Optional name for testing instead of hostname
-# - Optional "which of these is your network north/south" question - skips if args passed
-# - This should be served from the central cluster and the args should be added as part of the central Helm chart
-
 if [ "$(id -u)" = 0 ]
 then
     cat <<MSG

@@ -48,19 +48,43 @@ configs:
     !u E.App.Cluster:
       title: Edge cluster configuration
       type: object
-      required: [namespace]
+      required: [name, namespace, template]
       properties:
-        namespace:
-          description: The k8s namespace to deploy to.
-          type: string
         flux:
           description: The URL of the Git repo driving this cluster.
           type: string
+        hosts:
+          description: The hosts available in this cluster.
+          type: array
+          items:
+            type: object
+            required: [hostname]
+            properties:
+              hostname:
+                description: The hostname of the host.
+                type: string
+              arch:
+                description: A string describing the host CPU architecture.
+                type: string
+              os:
+                description: A string describing the host OS.
+                type: string
         kubeseal_cert:
           description: >
             The PEM-encoded X509 certificate used by the
             sealed-secrets operator on the edge cluster.
           type: string
+        name:
+          description: The name of the cluster.
+          type: string
+        namespace:
+          description: The k8s namespace to deploy to.
+          type: string
+        template:
+          description: The template UUID we are deployed from.
+          type: string
+          format: uuid
+
     !u E.App.Template:
       title: Edge cluster template
       description: >

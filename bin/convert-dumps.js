@@ -8,8 +8,9 @@ import yaml from "yaml";
 
 import { UUIDs } from "@amrc-factoryplus/utilities";
 import { Git, Edge } from "../lib/uuids.js";
+import { ACS } from "../dumps/acs.js";
 
-const UUID_SOURCES = { FP: UUIDs, G: Git, E: Edge };
+const UUID_SOURCES = { FP: UUIDs, G: Git, E: Edge, A: ACS };
 const DUMPS = "dumps";
 
 function resolve (str) {

@@ -9,7 +9,8 @@
 import { ServiceClient, WebAPI } from "@amrc-factoryplus/utilities";
 
 import { GIT_VERSION } from "../lib/git-version.js";
-import { EdgeDeploy } from "../lib/edge-deploy.js";
+import { EdgeDeployAPI } from "../lib/edge-deploy-api.js";
+import { Reconciler } from "../lib/reconciler.js";
 import { Edge } from "../lib/uuids.js";
 
 const fplus = await new ServiceClient({
@@ -19,7 +20,11 @@ const fplus = await new ServiceClient({
     git_email:          process.env.GIT_EMAIL,
 }).init();
 
-const edge = await new EdgeDeploy({
+const recon = await new Reconciler({
+    fplus,
+}).init();
+
+const edge = await new EdgeDeployAPI({
     fplus:      fplus,
     realm:      process.env.REALM,
     http_url:   process.env.HTTP_API_URL,

@@ -26,10 +26,13 @@ endif
 
 all: build push
 
-.PHONY: all build push check-committed
+.PHONY: all build push check-committed amend
 
 check-committed:
 	[ -z "$$(git status --porcelain)" ] || (git status; exit 1)
+
+amend:
+	git commit -a -C HEAD --amend
 
 build: check-committed
 	docker build -t "${tag}" ${build_args} .
